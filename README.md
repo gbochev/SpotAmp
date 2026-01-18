@@ -6,7 +6,11 @@ SpotAmp is a small Winamp inspired Spotify client that uses imgui as interface l
 
 ### How to use
 #### Linux
-Download the release folder, then start the sh script with sh spotamp.sh and wait for the window to open. Once it shows up, open Spotify client and select from the output the new device (to reroute the audio). One this is done you should be able to see in the sh terminal that you are logged it. You need to do this only once, it will then reuse your credentials but at first you will need Spotify client installed.
+Download the release folder, then start the sh script with:
+```
+sh spotamp.sh
+```
+and wait for the window to open. Once it shows up, open Spotify client and select from the output the new device (to reroute the audio). One this is done you should be able to see in the sh terminal that you are logged it. You need to do this only once, it will then reuse your credentials but at first you will need Spotify client installed.
 \
 \
 ![Main window](https://github.com/gbochev/SpotAmp/blob/main/Screenshot_2026-01-18_12-27-42.png)
@@ -20,17 +24,18 @@ Not compiled so far and not tested. Current release is only for linux.
 
 ### How to compile
 #### Linux
-Make sure that you have glfw (for ubuntu: sudo apt install libglfw3-dev) and build tools. Compile the main file with:
+Make sure that you have glfw (for ubuntu: ``` sudo apt install libglfw3-dev ```) and build tools. Compile the main file with:
 
+```
 g++ main.cpp lib/cJSON.c \
     lib/imgui.cpp lib/imgui_draw.cpp lib/imgui_tables.cpp lib/imgui_widgets.cpp \
     lib/backends/imgui_impl_glfw.cpp lib/backends/imgui_impl_opengl2.cpp \
     -Ilib -lGL -lglfw -lssl -lcrypto -o spotamp
-
+```
 And then start it the usual way with:
-
+```
 sh spotamp.sh
-
+```
 ### Used libraries
 [go-librespot](https://github.com/devgianlu/go-librespot/tree/master)
 [imgui](https://github.com/ocornut/imgui)
