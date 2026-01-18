@@ -7,7 +7,13 @@ SpotAmp is a small Winamp inspired Spotify client that uses imgui as interface l
 ### How to use
 #### Linux
 Download the release folder, then start the sh script with sh spotamp.sh and wait for the window to open. Once it shows up, open Spotify client and select from the output the new device (to reroute the audio). One this is done you should be able to see in the sh terminal that you are logged it. You need to do this only once, it will then reuse your credentials but at first you will need Spotify client installed.
-
+\
+\
+![Main window](https://github.com/gbochev/SpotAmp/blob/main/Screenshot_2026-01-18_12-27-42.png)
+\
+\
+Once it connects you can paste into the URI text field a link from Spotify (via the share button for a song, album or playlist - copy it and paste it into the field). Then you need to press enter there or click outside the box. It will extract just the needed id. Then you must click the load button and it should start playing.\
+The S checkbox is for shuffle. Only works after a playlist is loaded. If you load track and click it will hang. This is a bug. If there is something wrong usually you can always stop it with Ctrl+C on the sh terminal window (this will kill both SpotAmp and the go-librespot instance).
 
 #### Windows
 Not compiled so far and not tested. Current release is only for linux.
