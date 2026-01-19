@@ -6,13 +6,13 @@ SpotAmp v0.1
 backend: glfw with opengl2
 
 for linux:
-sudo apt install libglfw3-dev
+sudo apt install libglfw3-dev portaudio19-dev
 
 compile with:
-g++ main.cpp lib/cJSON.c \
+g++ main.cpp lib/audio_viz.cpp lib/cJSON.c \
     lib/imgui.cpp lib/imgui_draw.cpp lib/imgui_tables.cpp lib/imgui_widgets.cpp \
     lib/backends/imgui_impl_glfw.cpp lib/backends/imgui_impl_opengl2.cpp \
-    -Ilib -lGL -lglfw -lssl -lcrypto -o spotamp
+    -Ilib -lGL -lglfw -lportaudio -lssl -lcrypto -pthread -o spotamp
 
 ./go-librespot --config_dir .
 
@@ -41,6 +41,7 @@ sh spotamp.sh
 #include "lib/imgui.h"
 #include "lib/backends/imgui_impl_glfw.h"
 #include "lib/backends/imgui_impl_opengl2.h"
+#include "audio_viz.h"
 
 // ============================
 // Spotify state
@@ -60,7 +61,7 @@ bool seek_initialized = false;
 std::string full_text;
 std::string display_text;
 size_t scroll_index = 0;
-size_t display_width = 55;
+size_t display_width = 43;
 auto scroll_last = std::chrono::steady_clock::now();
 const int scroll_ms = 300;
 
@@ -267,14 +268,19 @@ std::string handle_paste(const std::string &input) {
 int main() {
     if (!glfwInit()) return 1;
 
-    GLFWwindow *window = glfwCreateWindow(440, 100, "SpotAmp", nullptr, nullptr);
-    glfwSetWindowSizeLimits(window, 440, 100, 440, 100);
+    GLFWwindow *window = glfwCreateWindow(440, 110, "SpotAmp", nullptr, nullptr);
+    glfwSetWindowSizeLimits(window, 440, 110, 440, 110);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
     ImGui::StyleColorsDark();
+    
+    ImFont* defaultFont = io.Fonts->AddFontDefault();
+    ImFont* pixelFont = io.Fonts->AddFontFromFileTTF("fonts/BetterVCR 25.09.ttf", 12.0f);
+    ImFont* songTitleFont = io.Fonts->AddFontFromFileTTF("fonts/UbuntuMono-Regular.ttf", 18.0f);
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL2_Init();
@@ -284,10 +290,13 @@ int main() {
     get_shuffle();
     get_seek();
 
+    // initAudioCapture();
+
     std::string song_uri = "spotify:track:6mfOyqROx7tnXkL9pNAp75";
     static char buffer[256] = {};
 
     while (!glfwWindowShouldClose(window)) {
+        // glfwMakeContextCurrent(window); //only when using more tha 1 window
         glfwPollEvents();
 
         ImGui_ImplOpenGL2_NewFrame();
@@ -304,7 +313,9 @@ int main() {
             ImGuiWindowFlags_NoMove);
 
         //////////////////////////////////
+        ImGui::PushFont(songTitleFont);
         ImGui::Text("%s", display_text.c_str());
+        ImGui::PopFont();
         //////////////////////////////////
         if (seek_initialized && track_duration_ms > 0) {
             int prev_pos = track_position_ms;
@@ -349,12 +360,21 @@ int main() {
 
 
         //////////////////////////////////
+        ImGui::PushFont(pixelFont);
         ImGui::SameLine();
-        if (ImGui::Button("|> / ||")) playpause();
+        if (ImGui::Button(" ▶/⏸ ")) playpause();
         ImGui::SameLine();
-        if (ImGui::Button(" << ")) prev();
+        if (ImGui::Button(" ⏮ ")) prev();
         ImGui::SameLine();
-        if (ImGui::Button(" >> ")) next();
+        if (ImGui::Button(" ⏭ ")) next();
+        ImGui::PopFont();
+
+        // ImGui::SameLine();
+        // if (ImGui::Button(" I>/|| ")) playpause();
+        // ImGui::SameLine();
+        // if (ImGui::Button(" << ")) prev();
+        // ImGui::SameLine();
+        // if (ImGui::Button(" >> ")) next();
 
         //shuffle
         ImGui::SameLine();
@@ -369,7 +389,7 @@ int main() {
         ImGui::SameLine();
         if (volume_initialized) {
             int prev_volume = volume_value;
-            ImGui::SetNextItemWidth(95.0f); // pixels
+            ImGui::SetNextItemWidth(130.0f); // pixels
             ImGui::SliderInt(
                 "Vol",
                 &volume_value,
@@ -443,12 +463,16 @@ int main() {
             update_scroll();
             scroll_last = now;
         }
+
+
+        // drawAudioWindow();
     }
 
     ImGui_ImplOpenGL2_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     glfwDestroyWindow(window);
+    // stopAudioCapture();
     glfwTerminate();
     return 0;
 }
