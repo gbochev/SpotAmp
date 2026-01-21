@@ -6,13 +6,13 @@ SpotAmp v0.1
 backend: glfw with opengl2
 
 for linux:
-sudo apt install libglfw3-dev portaudio19-dev
+sudo apt install libglfw3-dev
 
 compile with:
-g++ main.cpp lib/audio_viz.cpp lib/cJSON.c \
+g++ main.cpp lib/cJSON.c \
     lib/imgui.cpp lib/imgui_draw.cpp lib/imgui_tables.cpp lib/imgui_widgets.cpp \
     lib/backends/imgui_impl_glfw.cpp lib/backends/imgui_impl_opengl2.cpp \
-    -Ilib -lGL -lglfw -lportaudio -lssl -lcrypto -pthread -o spotamp
+    -Ilib -lGL -lglfw -lssl -lcrypto -pthread -o spotamp
 
 ./go-librespot --config_dir .
 
@@ -41,7 +41,6 @@ sh spotamp.sh
 #include "lib/imgui.h"
 #include "lib/backends/imgui_impl_glfw.h"
 #include "lib/backends/imgui_impl_opengl2.h"
-#include "audio_viz.h"
 
 // ============================
 // Spotify state
@@ -296,6 +295,12 @@ int main() {
     static char buffer[256] = {};
 
     while (!glfwWindowShouldClose(window)) {
+        //fixes high CPU usage when minimized
+        if (glfwGetWindowAttrib(window, GLFW_ICONIFIED)) {
+            glfwWaitEvents();
+            continue;
+        }
+
         // glfwMakeContextCurrent(window); //only when using more tha 1 window
         glfwPollEvents();
 
