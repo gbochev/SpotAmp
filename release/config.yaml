@@ -15,3 +15,7 @@ server:
   enabled: true
   address: "127.0.0.1"
   port: 3678
+
+audio_backend: pipe # Audio backend to use (alsa, pipe, pulseaudio)
+audio_output_pipe: '/tmp/spotamp_audio' # Path to a named pipe for audio output for for linux: '/tmp/spotamp_audio' windows: '\\.\pipe\spotamp_audio'
+audio_output_pipe_format: s16le # Audio output pipe format (s16le, s32le, f32le)

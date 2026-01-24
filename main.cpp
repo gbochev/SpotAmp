@@ -1,5 +1,5 @@
 /*
-SpotAmp v0.1
+SpotAmp v0.2
 
 17.01.2026 GB
 
@@ -9,10 +9,10 @@ for linux:
 sudo apt install libglfw3-dev
 
 compile with:
-g++ main.cpp lib/cJSON.c \
+g++ main.cpp lib/audio_engine.cpp lib/audio_fft.cpp lib/cJSON.c \
     lib/imgui.cpp lib/imgui_draw.cpp lib/imgui_tables.cpp lib/imgui_widgets.cpp \
     lib/backends/imgui_impl_glfw.cpp lib/backends/imgui_impl_opengl2.cpp \
-    -Ilib -lGL -lglfw -lssl -lcrypto -pthread -o spotamp
+    -Ilib -lGL -lglfw -lssl -lcrypto -pthread -lpthread -lm -o spotamp
 
 ./go-librespot --config_dir .
 
@@ -42,6 +42,11 @@ sh spotamp.sh
 #include "lib/backends/imgui_impl_glfw.h"
 #include "lib/backends/imgui_impl_opengl2.h"
 
+// Audio player thread
+#include "lib/audio_engine.h"
+// FFT
+#include "lib/audio_fft.h"
+
 // ============================
 // Spotify state
 // ============================
@@ -63,6 +68,12 @@ size_t scroll_index = 0;
 size_t display_width = 43;
 auto scroll_last = std::chrono::steady_clock::now();
 const int scroll_ms = 300;
+
+// ============================
+// FFT
+// ============================
+
+AudioFFT* gAudioFFT = nullptr;
 
 // ============================
 // Spotify API
@@ -267,8 +278,11 @@ std::string handle_paste(const std::string &input) {
 int main() {
     if (!glfwInit()) return 1;
 
-    GLFWwindow *window = glfwCreateWindow(440, 110, "SpotAmp", nullptr, nullptr);
-    glfwSetWindowSizeLimits(window, 440, 110, 440, 110);
+    int WIDTH = 590;
+    int HEIGHT = 105;
+
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "SpotAmp", nullptr, nullptr);
+    glfwSetWindowSizeLimits(window, WIDTH, HEIGHT, WIDTH, HEIGHT);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
@@ -289,7 +303,12 @@ int main() {
     get_shuffle();
     get_seek();
 
-    // initAudioCapture();
+    //start the fft
+    gAudioFFT = new AudioFFT(1024);
+    gAudioFFT->start();
+
+    //init audio thread
+    audio_init();
 
     std::string song_uri = "spotify:track:6mfOyqROx7tnXkL9pNAp75";
     static char buffer[256] = {};
@@ -300,6 +319,9 @@ int main() {
             glfwWaitEvents();
             continue;
         }
+        //cap the FPS to 60
+        constexpr int TARGET_FPS = 60;
+        auto frame_start = std::chrono::steady_clock::now();
 
         // glfwMakeContextCurrent(window); //only when using more tha 1 window
         glfwPollEvents();
@@ -316,6 +338,53 @@ int main() {
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove);
+
+        ImGui::Columns(2, nullptr, false); // last parameter = border
+        /////////////////////////
+        // FFT
+
+        if (gAudioFFT) {
+            // ImGui::PlotLines(
+            //     "FFT RAW",
+            //     gAudioFFT->fftMagnitude.data(),
+            //     gAudioFFT->fftMagnitude.size(),
+            //     0,
+            //     nullptr,
+            //     0.0f,
+            //     0.1f,
+            //     ImVec2(0, 200)
+            // );
+
+            // ImGui::PlotLines(
+            //     "FFT dB",
+            //     gAudioFFT->getDisplayVector().data(),
+            //     gAudioFFT->getDisplayVector().size(),
+            //     0,
+            //     nullptr,
+            //     0.0f,
+            //     1.0f,
+            //     ImVec2(0, 200)
+            // );
+
+            ImGui::SetColumnWidth(0, 160); // left panel width in pixels
+
+            float height = 87;
+            ImGui::BeginChild("plot_child", ImVec2(0, height), false, ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar);
+            ImGui::PlotLines(
+                "##waveform",                // label only for ID
+                gAudioFFT->waveform.data(),
+                gAudioFFT->waveform.size(),
+                0,
+                nullptr,
+                -1.0f,
+                1.0f,
+                ImVec2(ImGui::GetContentRegionAvail().x, height) // fills entire child width
+            );
+
+            ImGui::EndChild();
+        }
+
+        ImGui::NextColumn(); // move to right column
 
         //////////////////////////////////
         ImGui::PushFont(songTitleFont);
@@ -440,6 +509,10 @@ int main() {
             buffer[sizeof(buffer)-1] = '\0';
         }
 
+
+
+        ImGui::Columns(1); // go back to single column mode
+
         ImGui::End();
 
         ImGui::Render();
@@ -469,15 +542,27 @@ int main() {
             scroll_last = now;
         }
 
+        
+        //FPS limiter
+        auto frame_end = std::chrono::steady_clock::now();
+        auto frame_ms = std::chrono::duration_cast<std::chrono::milliseconds>(frame_end - frame_start).count();
+        if (frame_ms < 1000 / TARGET_FPS) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / TARGET_FPS - frame_ms));
+        }
 
-        // drawAudioWindow();
     }
 
+    //shutdown cleanup
+    if (gAudioFFT) {
+        gAudioFFT->stop();
+        delete gAudioFFT;
+        gAudioFFT = nullptr;
+    }
+    audio_shutdown();
     ImGui_ImplOpenGL2_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     glfwDestroyWindow(window);
-    // stopAudioCapture();
     glfwTerminate();
     return 0;
 }
